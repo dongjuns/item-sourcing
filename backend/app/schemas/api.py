@@ -1,6 +1,7 @@
 """API 입력과 작업·자산 조회 응답."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -58,6 +59,14 @@ class SettingsRead(BaseModel):
 
 class SettingsPatch(BaseModel):
     values: dict[str, JsonValue]
+
+
+class GenerationPlan(BaseModel):
+    mode: Literal["live", "mock"]
+    text_calls: int
+    image_calls: int
+    image_count: int
+    reserved_cost_krw: Decimal
 
 
 class ResolveCallRequest(BaseModel):

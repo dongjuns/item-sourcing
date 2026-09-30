@@ -13,6 +13,7 @@ from app.schemas.listing import GenerateRequest
 from app.schemas.product import ProductData, ProductRead
 from app.services.assets import asset_path
 from app.services.budget import BudgetError, reserve_call, setting_value, settle_call
+from app.services.generation_plan import generation_plan
 from app.services.html import assemble_detail
 from app.services.listings import reset_confirmation
 
@@ -142,6 +143,7 @@ async def generate_product(
     if product is None:
         raise LookupError("상품을 찾을 수 없습니다.")
     request = GenerateRequest.model_validate(job.payload["request"])
+    generation_plan(session, product, request, config)
     data = ProductRead.model_validate(product)
     data.reference_image_paths = [
         asset_path(config.assets_dir, asset.path)

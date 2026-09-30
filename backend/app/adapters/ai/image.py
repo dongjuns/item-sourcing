@@ -10,6 +10,7 @@ from app.schemas.product import Issue, ProductData
 from app.schemas.results import GeneratedImage, ImageResult, Usage
 from app.services.assets import save_image
 
+# [CHANNEL-SPEC] OpenAI Images Edits API — 모델·출력 규격 변경 시 이 파일 수정
 EDITS_URL = "https://api.openai.com/v1/images/edits"
 IMAGE_SIZE = "1024x1024"
 IMAGE_QUALITY = "low"

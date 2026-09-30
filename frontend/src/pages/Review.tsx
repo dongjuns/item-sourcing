@@ -5,11 +5,13 @@ import {
   request,
   waitJob,
   type GenerateRequest,
+  type GenerationPlan,
   type Listing,
   type Product,
   type Settings,
 } from "../api/client";
-import { statusLabel } from "../api/display";
+import { money, statusLabel } from "../api/display";
+import { generationReservation } from "../api/pricing";
 import { ListingEditor } from "../components/ListingEditor";
 
 export function Review({ settings }: { settings: Settings }) {
@@ -55,6 +57,15 @@ export function Review({ settings }: { settings: Settings }) {
           listings.map((listing) => [listing.channel, listing.content_version]),
         ),
       };
+      const plan = await post<GenerationPlan>(
+        `/products/${id}/generation-plan`,
+        body,
+      );
+      setMessage(
+        plan.mode === "mock"
+          ? "연습 요청을 준비했습니다."
+          : `예약 비용 ${money(plan.reserved_cost_krw)}원으로 요청합니다.`,
+      );
       const accepted = await post<{ job_id: string }>(
         `/products/${id}/generate`,
         body,
@@ -79,7 +90,9 @@ export function Review({ settings }: { settings: Settings }) {
     );
   }
   if (!product) return <p>{message || "상품 정보를 불러오는 중입니다."}</p>;
-  const current = listings.find((listing) => listing.channel === selected);
+  const current =
+    listings.find((listing) => listing.channel === selected) || listings[0];
+  const reservation = generationReservation(settings, channels.length);
   return (
     <section>
       <div className="page-heading">
@@ -94,6 +107,13 @@ export function Review({ settings }: { settings: Settings }) {
         <p className="notice">
           연습 생성 모드입니다. 실제 AI 결과가 아닙니다. 개발용 키·모델·비용
           설정 후 실생성 모드로 전환하세요.
+        </p>
+      )}
+      {settings.status.ai_mode === "live" && (
+        <p className="notice">
+          전체 생성 예약 비용:{" "}
+          {reservation === null ? "설정 필요" : `${money(reservation)}원`}. 최종
+          청구 비용은 제공자 사용량에서 확인합니다.
         </p>
       )}
       <div className="panel">
@@ -171,7 +191,9 @@ export function Review({ settings }: { settings: Settings }) {
       <div className="tabs">
         {listings.map((listing) => (
           <button
-            className={selected === listing.channel ? "active" : "secondary"}
+            className={
+              current?.channel === listing.channel ? "active" : "secondary"
+            }
             key={listing.id}
             onClick={() => setSelected(listing.channel)}
           >

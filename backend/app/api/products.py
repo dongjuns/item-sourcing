@@ -8,10 +8,11 @@ from sqlalchemy import select
 
 from app.api.dependencies import DB, Worker
 from app.models import Job, Product
-from app.schemas.api import AssetRead, CollectRequest, JobAccepted, JobRead
+from app.schemas.api import AssetRead, CollectRequest, GenerationPlan, JobAccepted, JobRead
 from app.schemas.listing import GenerateRequest, ListingRead
 from app.schemas.product import ProductQuote, ProductRead
 from app.services.assets import list_assets
+from app.services.generation_plan import generation_plan
 from app.services.jobs import prepare_collect, prepare_generation
 from app.services.quote import product_quote
 
@@ -84,9 +85,17 @@ def listings(product_id: UUID, db: DB) -> list[ListingRead]:
 def generate(
     product_id: UUID, body: GenerateRequest, background: BackgroundTasks, db: DB, worker: Worker
 ) -> JobAccepted:
-    job = prepare_generation(db, product_id, body)
+    job = prepare_generation(db, product_id, body, worker.config)
     background.add_task(worker.run, job.id)
     return JobAccepted(job_id=job.id)
+
+
+@router.post("/products/{product_id}/generation-plan")
+def plan(product_id: UUID, body: GenerateRequest, db: DB, worker: Worker) -> GenerationPlan:
+    row = db.get(Product, product_id)
+    if row is None:
+        raise LookupError("상품을 찾을 수 없습니다.")
+    return generation_plan(db, row, body, worker.config)
 
 
 @router.get("/jobs/{job_id}")

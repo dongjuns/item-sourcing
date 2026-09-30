@@ -9,9 +9,11 @@ from app.core.security import redact
 from app.schemas.product import Issue, ProductData
 from app.schemas.results import DetailContent, DetailResult, Usage
 
+# [CHANNEL-SPEC] OpenAI Responses API — 요청·구조화 출력 규격 변경 시 이 파일 수정
 RESPONSES_URL = "https://api.openai.com/v1/responses"
 MAX_OUTPUT_TOKENS = 2000
 MAX_PRODUCT_TEXT = 12_000
+MAX_DESCRIPTION_TEXT = 6000
 DETAIL_SCHEMA: dict[str, object] = {
     "type": "object",
     "additionalProperties": False,
@@ -50,13 +52,25 @@ class OpenAIText:
             )
         try:
             prompt = (self.config.prompts_dir / f"detail_{channel}.md").read_text()
-            facts = product.model_dump(mode="json", exclude={"raw", "reference_image_paths"})
+            facts = product.model_dump(
+                mode="json", exclude={"raw", "reference_image_paths", "detail_html", "images"}
+            )
+            facts["detail_text"] = (product.detail_text or "")[:MAX_DESCRIPTION_TEXT]
+            user_input = json.dumps({"tone": tone, "product": facts}, ensure_ascii=False)
+            if len(user_input) > MAX_PRODUCT_TEXT:
+                return DetailResult(
+                    usage=Usage(billing_status="unbilled"),
+                    issues=[
+                        Issue(
+                            code="input_too_large",
+                            message="상품 정보가 생성 입력 한도를 넘었습니다.",
+                        )
+                    ],
+                )
             body = {
                 "model": self.config.ai_text_model,
                 "instructions": prompt,
-                "input": json.dumps({"tone": tone, "product": facts}, ensure_ascii=False)[
-                    :MAX_PRODUCT_TEXT
-                ],
+                "input": user_input,
                 "max_output_tokens": MAX_OUTPUT_TOKENS,
                 "store": False,
                 "text": {

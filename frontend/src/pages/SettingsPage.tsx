@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { request, type Settings } from "../api/client";
+import { readPricing } from "../api/pricing";
 
 export function SettingsPage({
   settings,
@@ -17,6 +18,18 @@ export function SettingsPage({
   const [tone, setTone] = useState(String(settings.values.default_tone ?? ""));
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [textLimit, setTextLimit] = useState(
+    readPricing(settings, "text").call_limit_krw,
+  );
+  const [imageLimit, setImageLimit] = useState(
+    readPricing(settings, "image").call_limit_krw,
+  );
+  const [pricingUrl, setPricingUrl] = useState(
+    readPricing(settings, "text").source_url || "",
+  );
+  const [verifiedAt, setVerifiedAt] = useState(
+    readPricing(settings, "text").verified_at || "",
+  );
   async function save(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -29,6 +42,24 @@ export function SettingsPage({
             daily_ai_limit: daily || null,
             monthly_ai_limit: monthly || null,
             default_tone: tone,
+            ...(textLimit || imageLimit
+              ? {
+                  ai_pricing: {
+                    text: {
+                      model: settings.status.ai_text_model,
+                      call_limit_krw: textLimit,
+                      source_url: pricingUrl,
+                      verified_at: verifiedAt,
+                    },
+                    image: {
+                      model: settings.status.ai_image_model,
+                      call_limit_krw: imageLimit,
+                      source_url: pricingUrl,
+                      verified_at: verifiedAt,
+                    },
+                  },
+                }
+              : {}),
           },
         }),
       });
@@ -67,6 +98,46 @@ export function SettingsPage({
         </p>
       </div>
       <form className="panel" onSubmit={save}>
+        <p>
+          텍스트 모델: {settings.status.ai_text_model || "미설정"} · 이미지
+          모델: {settings.status.ai_image_model || "미설정"}
+        </p>
+        <div className="form-grid">
+          <label>
+            텍스트 호출 1회 예약 상한 원
+            <input
+              type="number"
+              min="1"
+              value={textLimit}
+              onChange={(event) => setTextLimit(event.target.value)}
+            />
+          </label>
+          <label>
+            썸네일 3장 호출 1회 예약 상한 원
+            <input
+              type="number"
+              min="1"
+              value={imageLimit}
+              onChange={(event) => setImageLimit(event.target.value)}
+            />
+          </label>
+          <label>
+            가격 확인 근거 URL
+            <input
+              type="url"
+              value={pricingUrl}
+              onChange={(event) => setPricingUrl(event.target.value)}
+            />
+          </label>
+          <label>
+            가격 확인일
+            <input
+              type="date"
+              value={verifiedAt}
+              onChange={(event) => setVerifiedAt(event.target.value)}
+            />
+          </label>
+        </div>
         <h2>생성 비용과 기본 톤</h2>
         <div className="form-grid">
           <label>

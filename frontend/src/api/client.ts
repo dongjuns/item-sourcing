@@ -7,6 +7,7 @@ export type Asset = components["schemas"]["AssetRead"];
 export type Job = components["schemas"]["JobRead"];
 export type Settings = components["schemas"]["SettingsRead"];
 export type GenerateRequest = components["schemas"]["GenerateRequest"];
+export type GenerationPlan = components["schemas"]["GenerationPlan"];
 export type ListingPatch = components["schemas"]["ListingPatch"];
 
 let authorization = "";

@@ -135,6 +135,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/products/{product_id}/generation-plan": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Plan */
+    post: operations["plan_api_products__product_id__generation_plan_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/jobs/{job_id}": {
     parameters: {
       query?: never;
@@ -363,6 +380,22 @@ export interface components {
        * @default false
        */
       image_usage_confirmed: boolean;
+    };
+    /** GenerationPlan */
+    GenerationPlan: {
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "live" | "mock";
+      /** Text Calls */
+      text_calls: number;
+      /** Image Calls */
+      image_calls: number;
+      /** Image Count */
+      image_count: number;
+      /** Reserved Cost Krw */
+      reserved_cost_krw: string;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -961,6 +994,41 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["JobAccepted"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  plan_api_products__product_id__generation_plan_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        product_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["GenerateRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GenerationPlan"];
         };
       };
       /** @description Validation Error */

@@ -2,6 +2,10 @@
 
 from conftest import TEST_URL
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
+from sqlalchemy import func, select
+
+from app.models import Job
 
 
 def collect(client: TestClient) -> str:
@@ -85,3 +89,57 @@ def test_auth_and_unsupported_source(client: TestClient) -> None:
         == 409
     )
     assert client.get("/openapi.json").status_code == 404
+
+
+def test_unconfigured_live_generation_creates_no_job(client: TestClient) -> None:
+    product_id = collect(client)
+    config = client.app.state.runner.config
+    config.ai_mode = "live"
+    config.openai_api_key = SecretStr("")
+    response = client.post(f"/api/products/{product_id}/generate", json={"channels": ["coupang"]})
+    assert response.status_code == 409 and "OPENAI_API_KEY" in response.json()["detail"]
+    with client.app.state.runner.sessions() as session:
+        assert (
+            session.scalar(select(func.count()).select_from(Job).where(Job.kind == "generate")) == 0
+        )
+
+
+def test_full_generation_budget_and_model_check(client: TestClient) -> None:
+    product_id = collect(client)
+    config = client.app.state.runner.config
+    config.ai_mode, config.ai_text_model, config.ai_image_model = "live", "test-text", "test-image"
+    config.openai_api_key = SecretStr("fixture-ai-key")
+    response = client.patch(
+        "/api/settings",
+        json={
+            "values": {
+                "daily_ai_limit": "600",
+                "monthly_ai_limit": "1000",
+                "ai_pricing": {
+                    "text": {
+                        "model": "test-text",
+                        "call_limit_krw": "100",
+                        "verified_at": "2026-10-01",
+                        "source_url": "https://example.test/pricing",
+                    },
+                    "image": {
+                        "model": "test-image",
+                        "call_limit_krw": "500",
+                        "verified_at": "2026-10-01",
+                        "source_url": "https://example.test/pricing",
+                    },
+                },
+            }
+        },
+    )
+    assert response.status_code == 200
+    body = {"channels": ["coupang", "smartstore"]}
+    endpoint = f"/api/products/{product_id}"
+    assert client.post(endpoint + "/generation-plan", json=body).status_code == 409
+    assert client.post(endpoint + "/generate", json=body).status_code == 409
+    client.patch("/api/settings", json={"values": {"daily_ai_limit": "1000"}})
+    plan = client.post(endpoint + "/generation-plan", json=body).json()
+    assert plan["reserved_cost_krw"] == "700"
+    assert plan["text_calls"] == 2 and plan["image_count"] == 3
+    config.ai_text_model = "different-model"
+    assert client.post(endpoint + "/generation-plan", json=body).status_code == 409

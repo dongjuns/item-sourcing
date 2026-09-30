@@ -7,9 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.adapters.sources.base import SourceAdapter
+from app.core.config import Config
 from app.models import Job, Listing, Product
 from app.schemas.listing import GenerateRequest
 from app.services.collect import unsupported_source_issue
+from app.services.generation_plan import generation_plan
 from app.services.listings import ReviewError
 
 
@@ -31,7 +33,9 @@ def prepare_collect(session: Session, url: str, adapter: SourceAdapter | None) -
     )
 
 
-def prepare_generation(session: Session, product_id: UUID, request: GenerateRequest) -> Job:
+def prepare_generation(
+    session: Session, product_id: UUID, request: GenerateRequest, config: Config
+) -> Job:
     product = session.execute(
         select(Product).where(Product.id == product_id).with_for_update()
     ).scalar_one_or_none()
@@ -52,6 +56,7 @@ def prepare_generation(session: Session, product_id: UUID, request: GenerateRequ
             or request.expected_versions.get(listing.channel) != listing.content_version
         ):
             raise ReviewError("콘텐츠 상태·버전이 변경되었습니다. 새로고침하세요.")
+    generation_plan(session, product, request, config)
     return save_job(
         session,
         Job(

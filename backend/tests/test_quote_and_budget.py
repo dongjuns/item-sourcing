@@ -73,11 +73,13 @@ def test_unknown_cost_keeps_reservation_and_release_frees_it(client: TestClient)
                 "monthly_ai_limit": "1000",
                 "ai_pricing": {
                     "text": {
+                        "model": "test-model",
                         "call_limit_krw": "60",
                         "verified_at": "test",
                         "source_url": "https://example.test/pricing",
                     },
                     "image": {
+                        "model": "test-model",
                         "call_limit_krw": "60",
                         "verified_at": "test",
                         "source_url": "https://example.test/pricing",
