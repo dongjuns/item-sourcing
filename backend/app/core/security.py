@@ -10,7 +10,19 @@ from pydantic import JsonValue
 from app.core.config import Config, get_config
 
 basic_auth = HTTPBasic(auto_error=False)
-SECRET_FIELDS = {"aid", "apikey", "api_key", "token", "authorization", "password", "secret"}
+SECRET_FIELDS = {
+    "aid",
+    "apikey",
+    "api_key",
+    "token",
+    "authorization",
+    "password",
+    "secret",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "sid",
+}
 
 
 def require_auth(

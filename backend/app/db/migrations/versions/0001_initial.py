@@ -348,6 +348,15 @@ def upgrade() -> None:
         postgresql_where=sa.text("status IN ('pending','running','unknown')"),
         sqlite_where=sa.text("status IN ('pending','running','unknown')"),
     )
+    if op.get_bind().dialect.name == "postgresql":
+        op.create_foreign_key(
+            "fk_listing_thumbnail",
+            "listings",
+            "assets",
+            ["selected_thumbnail_id"],
+            ["id"],
+            ondelete="RESTRICT",
+        )
     # 초기 스키마 처리 완료
 
 
@@ -360,6 +369,8 @@ def downgrade() -> None:
         sqlite_where=sa.text("status IN ('pending','running','unknown')"),
     )
     op.drop_table("registrations")
+    if op.get_bind().dialect.name == "postgresql":
+        op.drop_constraint("fk_listing_thumbnail", "listings", type_="foreignkey")
     op.drop_table("assets")
     op.drop_table("listings")
     op.drop_table("ai_calls")

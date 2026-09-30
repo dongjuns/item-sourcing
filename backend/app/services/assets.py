@@ -39,9 +39,11 @@ async def download_images(
     issues = list(product.issues)
     images = product.images or []
     for item in images[: config.max_source_images]:
-        if not isinstance(item, dict) or not isinstance(item.get("source_url"), str):
+        if not isinstance(item, dict):
             continue
-        url = item["source_url"]
+        url = item.get("source_url")
+        if not isinstance(url, str):
+            continue
         asset = Asset(
             product_id=product.id, kind="source", mode=product.acquisition_mode, source_url=url
         )

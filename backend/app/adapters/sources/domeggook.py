@@ -10,9 +10,12 @@ from pydantic import JsonValue, ValidationError
 from app.adapters.http import SourceHTTP
 from app.adapters.sources.parsing import (
     ImageParser,
+    boolean_value,
+    description_text,
     integer_value,
     money_value,
     object_value,
+    quantity_tiers,
     text_value,
 )
 from app.core.config import Config
@@ -63,7 +66,11 @@ def collect_images(item: dict[str, JsonValue], url: str) -> list[ImageRef]:
     parser.feed(text_value(contents.get("item")) or "")
     urls = ([representative] if representative else []) + parser.urls
     return [
-        ImageRef(source_url=value, sort_order=index)
+        ImageRef(
+            source_url=value,
+            role="representative" if value == representative else "detail",
+            sort_order=index,
+        )
         for index, value in enumerate(dict.fromkeys(urls))
     ]
 
@@ -102,6 +109,7 @@ def build_product(raw: RawProduct) -> ProductData:
     dome_delivery = object_value(delivery.get("dome"))
     description = object_value(item.get("desc"))
     allowed = object_value(description.get("license")).get("usable")
+    detail_html = text_value(object_value(description.get("contents")).get("item"))
     issues: list[Issue] = []
     product = ProductData(
         source=raw.source,
@@ -111,28 +119,52 @@ def build_product(raw: RawProduct) -> ProductData:
         raw=raw.payload,
         source_product_id=str(basis["no"]) if basis.get("no") is not None else None,
         name=text_value(basis.get("title")),
-        currency=None,
+        currency="KRW",
         wholesale_price=money_value(price.get("dome")),
+        price_tiers=quantity_tiers(price.get("dome")),
         minimum_order_quantity=integer_value(quantity.get("domeMoq")),
+        purchase_unit=integer_value(quantity.get("domeUnit")),
+        maximum_order_quantity=integer_value(quantity.get("domeLoq")),
         stock_quantity=integer_value(quantity.get("inventory")),
         options=collect_options(item.get("selectOpt"), issues),
         images=collect_images(item, raw.source_url),
-        detail_html=text_value(object_value(description.get("contents")).get("item")),
-        image_usage_allowed=allowed if isinstance(allowed, bool) else None,
+        detail_html=detail_html,
+        detail_text=description_text(detail_html),
+        image_usage_allowed=boolean_value(allowed),
         shipping=Shipping(
             fee=money_value(dome_delivery.get("fee")),
             fee_type=text_value(dome_delivery.get("type")),
+            fee_table=text_value(dome_delivery.get("tbl")),
+            payment_method=text_value(delivery.get("pay")),
+            fee_calculation=(
+                "fixed"
+                if dome_delivery.get("type") == "고정배송비"
+                else "quantity_tiers"
+                if dome_delivery.get("type") == "수량별차등"
+                else "unknown"
+            ),
+            quantity_fee_tiers=quantity_tiers(dome_delivery.get("tbl")),
             dispatch_days=integer_value(delivery.get("periodDeli")),
             remote_area_fee=money_value(object_value(delivery.get("feeExtra")).get("islands")),
         ),
     )
-    for field in ("name", "wholesale_price", "options", "images", "detail_html"):
-        if not getattr(product, field):
+    for field in ("name", "images", "detail_html"):
+        if getattr(product, field) in (None, "", []):
             issues.append(
                 Issue(code="missing_field", field=field, message=f"{field} 정보를 확인하세요.")
             )
-    if product.currency is None:
-        issues.append(Issue(code="currency_unverified", field="currency", message="통화 확인 필요"))
+    if product.wholesale_price is None and not product.price_tiers:
+        issues.append(
+            Issue(code="missing_price", field="wholesale_price", message="단가 확인 필요")
+        )
+    if product.detail_text is None and product.detail_html:
+        issues.append(
+            Issue(
+                code="image_only_description",
+                field="detail_text",
+                message="본문 텍스트 없음. 이미지 OCR은 별도 단계입니다.",
+            )
+        )
     product.issues = issues
     product.collection_status = (
         "failed" if not product.name else "partial" if issues else "complete"

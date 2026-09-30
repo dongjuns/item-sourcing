@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -155,7 +156,7 @@ async def generate_product(
         except BudgetError as error:
             session.rollback()
             errors.append(str(error))
-    listing_ids = []
+    listing_ids: list[JsonValue] = []
     for channel in request.channels:
         try:
             listing_id, channel_errors = await apply_channel(
@@ -166,6 +167,6 @@ async def generate_product(
         except BudgetError as error:
             session.rollback()
             errors.append(str(error))
-    job.result = {"listing_ids": listing_ids, "errors": errors}
+    job.result = {"listing_ids": listing_ids, "errors": [message for message in errors]}
     job.status = "partial" if errors and listing_ids else "failed" if errors else "succeeded"
     session.commit()

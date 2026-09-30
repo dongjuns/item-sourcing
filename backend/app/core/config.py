@@ -29,7 +29,7 @@ class Config(BaseSettings):
     source_interval_seconds: float = Field(default=2, ge=2)
     max_image_bytes: int = Field(default=10_000_000, gt=0)
     max_source_images: int = Field(default=30, gt=0)
-    image_allowed_domains: list[str] = ["domeggook.com", "domemedb.com"]
+    image_allowed_domains: list[str] = ["domeggook.com", "domemedb.com", "i.ifh.cc"]
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 

@@ -31,9 +31,18 @@ class ImageRef(BaseModel):
     sort_order: int = 0
 
 
+class PriceTier(BaseModel):
+    minimum_quantity: int = Field(ge=1)
+    unit_price: Decimal = Field(ge=0)
+
+
 class Shipping(BaseModel):
     fee: Decimal | None = Field(default=None, ge=0)
     fee_type: str | None = None
+    fee_table: str | None = None
+    payment_method: str | None = None
+    fee_calculation: Literal["fixed", "quantity_tiers", "unknown"] = "unknown"
+    quantity_fee_tiers: list[PriceTier] = Field(default_factory=list)
     free_shipping_threshold: Decimal | None = None
     remote_area_fee: Decimal | None = None
     dispatch_days: int | None = None
@@ -50,12 +59,16 @@ class ProductData(BaseModel):
     name: str | None = None
     currency: str | None = None
     wholesale_price: Decimal | None = Field(default=None, ge=0)
+    price_tiers: list[PriceTier] = Field(default_factory=list)
     minimum_order_quantity: int | None = Field(default=None, ge=0)
+    purchase_unit: int | None = Field(default=None, ge=1)
+    maximum_order_quantity: int | None = Field(default=None, ge=1)
     stock_quantity: int | None = Field(default=None, ge=0)
     options: list[ProductOption] | None = None
     images: list[ImageRef] | None = None
     shipping: Shipping | None = None
     detail_html: str | None = None
+    detail_text: str | None = None
     image_usage_allowed: bool | None = None
     reference_image_paths: list[Path] = Field(default_factory=list, exclude=True)
     raw: dict[str, JsonValue]
@@ -84,3 +97,13 @@ class FetchResult(BaseModel):
 class NormalizeResult(BaseModel):
     product: ProductData | None = None
     issues: list[Issue] = []
+
+
+class ProductQuote(BaseModel):
+    quantity: int
+    currency: str | None
+    unit_price: Decimal | None = None
+    product_amount: Decimal | None = None
+    shipping_fee: Decimal | None = None
+    total_amount: Decimal | None = None
+    issues: list[Issue] = Field(default_factory=list)

@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from pydantic import JsonValue
-from sqlalchemy import CheckConstraint, DateTime, Index, Numeric, String, Text
+from sqlalchemy import CheckConstraint, DateTime, Index, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import JSON_DATA, Base, IdentityMixin
@@ -18,6 +18,8 @@ class Product(IdentityMixin, Base):
         CheckConstraint("wholesale_price IS NULL OR wholesale_price >= 0"),
         CheckConstraint("minimum_order_quantity IS NULL OR minimum_order_quantity >= 0"),
         CheckConstraint("stock_quantity IS NULL OR stock_quantity >= 0"),
+        CheckConstraint("purchase_unit IS NULL OR purchase_unit >= 1"),
+        CheckConstraint("maximum_order_quantity IS NULL OR maximum_order_quantity >= 1"),
         Index("ix_products_source_status", "source", "collection_status"),
         Index("ix_products_source_item", "source", "source_product_id"),
         Index("ix_products_created_at", "created_at"),
@@ -31,12 +33,18 @@ class Product(IdentityMixin, Base):
     name: Mapped[str | None] = mapped_column(Text)
     currency: Mapped[str | None] = mapped_column(String)
     wholesale_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    price_tiers: Mapped[list[JsonValue]] = mapped_column(
+        JSON_DATA, default=list, server_default=text("'[]'")
+    )
     minimum_order_quantity: Mapped[int | None]
+    purchase_unit: Mapped[int | None]
+    maximum_order_quantity: Mapped[int | None]
     stock_quantity: Mapped[int | None]
     options: Mapped[list[JsonValue] | None] = mapped_column(JSON_DATA)
     images: Mapped[list[JsonValue] | None] = mapped_column(JSON_DATA)
     shipping: Mapped[dict[str, JsonValue] | None] = mapped_column(JSON_DATA)
     detail_html: Mapped[str | None] = mapped_column(Text)
+    detail_text: Mapped[str | None] = mapped_column(Text)
     image_usage_allowed: Mapped[bool | None]
     raw: Mapped[dict[str, JsonValue]] = mapped_column(JSON_DATA)
     issues: Mapped[list[JsonValue]] = mapped_column(JSON_DATA, default=list)

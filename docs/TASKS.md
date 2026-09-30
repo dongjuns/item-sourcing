@@ -1,15 +1,17 @@
 # TASKS.md
 
-## 현재 구현 범위와 진행 상태 (2026-09-30)
+## 현재 구현 범위와 진행 상태 (2026-10-01)
 
 현재 목표는 **사용자가 입력한 도매꾹 상품 URL 수집 → AI 상세페이지·썸네일 생성 → 검토·편집·확정**까지다. 채널 등록은 후속 단계로 보류한다. 아래 기존 일정의 등록 항목은 현재 구현 대상이 아니다.
 
-- 설계 문서와 언어 harness 작성 완료. 최신 검사에서 harness 테스트 8개와 대상 파일 89개의 언어 검사 통과.
-- 백엔드 수집·생성·검토 API, 도매꾹·AI 어댑터, 예산 관리, 프론트 화면은 코드 작성 상태. 기능 테스트와 전체 빌드가 끝나기 전까지 구현 완료로 체크하지 않는다.
-- 로컬 SQLite 초기 마이그레이션·기본 설정 투입 성공. PostgreSQL 실행 도구가 없어 PostgreSQL 실실행 검증은 미완료.
-- Python 의존성 설치 완료. 타입 검사에서 패키지 경로 중복 오류가 확인됐으며 수정 필요. 프론트 의존성 설치·API 타입 생성·빌드 검증 진행 필요.
-- 실제 도매꾹 상품 수집과 유료 AI 생성은 아직 실행하지 않았다. 테스트 응답은 실제 수집 녹화본이 아닌 명시적인 예시 fixture다.
-- 다음 순서: 정적 검사 오류 수정 → 기능 테스트·프론트 빌드 → 화면에서 전체 흐름 검증 → 실행·인수인계 문서 정리.
+- 상품 63749955 실제 수집 완료: 단가 35,000원·배송비 2,750원·수량 1개 합계 37,750원, 대표·본문 사진 3개 저장, 설명 텍스트 569자 추출.
+- 수량별 상품금액·기본 배송비·합계 API와 화면 추가. 가격·옵션·배송 규칙 미확인 값은 null로 유지.
+- 실제 응답 발췌 fixture와 정규화 스냅샷 확보. 자동 테스트는 외부 네트워크를 차단하고 생성은 mock으로 검증.
+- 백엔드 정적·타입 검사, 프론트 OpenAPI 타입 생성·정적 검사·빌드 통과. make lint와 make test 명령 추가.
+- SQLite 초기·추가 마이그레이션 적용. PostgreSQL은 SQL 생성 검사만 수행하며 서버 실실행은 미검증.
+- [초안 PR 1](https://github.com/dongjuns/item-sourcing/pull/1) 생성. 기능 보강·검증 결과를 같은 브랜치에 반영.
+- 다음 검증: 연결된 Browser에서 화면 동작, 실제 AI 계정·모델·가격·한도 설정 후 유료 생성, PostgreSQL 실실행. Docker·CI·백업은 별도 미완료.
+- 상세 근거: [검증 기록](verification.md), [개발 문제 기록](development-issues.md).
 
 > 완료 시 `[x]`. 각 작업은 하나의 PR 단위를 목표로 함. 담당: BE(백엔드), FE(프론트), ALL.
 > 우선순위: P0 = 1차 필수, P1 = 시간 남으면, P2 = 2차/선택.
@@ -37,26 +39,26 @@
 - [x] P0 코드·Markdown 영어·한글 규칙 harness + 검증 (`harness/`, `make check-design`, 8개 테스트 통과)
 - [ ] P0 소싱처·채널 공식 규격과 계정 조건 확인 → `docs/channel-fields.md` 근거·실제 필드 매핑 보강 (도매꾹부터)
 
-> 위 체크는 설계 문서 작성 완료를 뜻한다. 발주자 검수·계정 승인·실연동·코드 구현은 완료하지 않았다. 도매꾹 키는 로컬 .env의 DOMEGGOOK_API_KEY 설정 존재만 확인했다.
+> 기획 체크는 문서 작성 완료를 뜻한다. 실제 수집·구현 검증 상태는 문서 상단과 verification.md를 따른다. 화면 검수·실제 AI·등록 기능은 완료하지 않았다.
 
 ### 골격
-- [ ] P0 (BE) FastAPI 프로젝트, 설정 로더(.env), 로깅, 헬스체크
+- [x] P0 (BE) FastAPI 프로젝트, 설정 로더(.env), 로깅, 헬스체크
 - [ ] P0 (BE) SQLAlchemy 모델 + Alembic 초기 마이그레이션 (`docs/db-schema.md` P0 7개 테이블, 예산·등록 중복·버전 제약 포함)
-- [ ] P0 (BE) 어댑터 base Protocol 3종 (`sources/base.py`, `channels/base.py`, `ai/base.py`) + 레지스트리
-- [ ] P0 (FE) Vite+React+TS 골격, 라우팅, API 클라이언트, 레이아웃
+- [x] P0 (BE) 어댑터 base Protocol 3종 (`sources/base.py`, `channels/base.py`, `ai/base.py`) + 레지스트리
+- [x] P0 (FE) Vite+React+TS 골격, 라우팅, API 클라이언트, 레이아웃
 - [ ] P0 (ALL) `docker-compose.yml` (api, web, db), `Makefile`(up/down/migrate/test/lint)
 - [ ] P0 (ALL) pytest + ruff + eslint, GitHub Actions(lint·test), 언어 harness를 make lint·CI에 포함
 - [ ] P1 (ALL) pre-commit 훅
 
 ## Phase 2 — W2 도매꾹 수집 [우선순위 1, 필수] (10/27–10/31)
 
-- [ ] P0 (BE) `Product` 표준 모델 + `RawProduct` 저장 (원본 jsonb 보존)
-- [ ] P0 (BE) 어댑터 레지스트리: URL 도메인으로 어댑터 자동 선택, 미지원 시 "지원 소싱처 아님 + 추가 방법 안내" 반환
-- [ ] P0 (BE) **도매꾹 어댑터**: `matches / fetch / normalize` — 상품명, 도매가, 옵션·재고, 이미지, 상세 HTML, 배송 조건
+- [x] P0 (BE) `Product` 표준 모델 + `RawProduct` 저장 (원본 jsonb 보존)
+- [x] P0 (BE) 어댑터 레지스트리: URL 도메인으로 어댑터 자동 선택, 미지원 시 "지원 소싱처 아님 + 추가 방법 안내" 반환
+- [x] P0 (BE) **도매꾹 어댑터**: `matches / fetch / normalize` — 상품명, 도매가, 옵션·재고, 이미지, 상세 HTML, 배송 조건
 - [ ] P0 (BE) 도매꾹 API 가능 여부 확인 → 불가 시 Playwright 수집기 (요청 간격 ≥ 2초)
-- [ ] P0 (BE) 응답 fixture 녹화 + `normalize` 스냅샷 테스트
-- [ ] P0 (BE) 이미지 다운로드 → `assets(kind=source)` 저장
-- [ ] P0 (BE) `POST /products/from-url`, 실패 시 사유·원본 링크 반환
+- [x] P0 (BE) 응답 fixture 녹화 + `normalize` 스냅샷 테스트
+- [x] P0 (BE) 이미지 다운로드 → `assets(kind=source)` 저장
+- [x] P0 (BE) `POST /products/from-url`, 실패 시 사유·원본 링크 반환
 - [ ] P0 (FE) 상품 입력 화면: URL 입력 → 진행 상태 → 수집 결과 미리보기(누락 필드 표시)
 - [ ] P0 (FE) 상품 목록 화면(최근 수집, 소싱처·상태 필터)
 - [ ] P1 (BE) 수동 입력 **보류**: 요청 스키마만 예약, 저장 엔드포인트·화면 미구현 (실패 시 원본 링크·사유·재시도 안내)
@@ -82,7 +84,7 @@
 ## Phase 4 — W4 AI 상세페이지·썸네일 [우선순위 2] (11/10–11/14)
 
 - [ ] P0 (BE) `TextGenerator` 구현: 프롬프트 템플릿 파일(`prompts/detail_{channel}.md`), 채널별 톤·길이 규칙
-- [ ] P0 (BE) 생성 결과 → `listings(status=draft)` 채널별 1건씩
+- [x] P0 (BE) 생성 결과 → `listings(status=draft)` 채널별 1건씩
 - [ ] P0 (BE) `ImageGenerator` 구현: 썸네일 3안, 채널 규격 리사이즈·여백
 - [ ] P0 (BE) 상세페이지 HTML 조립(텍스트 섹션 + 수집 이미지 + 생성 이미지), 채널별 허용 태그 필터
 - [ ] P0 (BE) 토큰·이미지 생성 횟수·비용 로그, 일·월 예산 예약·정산·unknown 수동 확인
@@ -110,7 +112,7 @@
 
 - [ ] P0 (ALL) 운영 서버 배포(Docker Compose), HTTPS, 기본 인증(1인 사용)
 - [ ] P0 (ALL) 백업 스크립트(DB dump + assets), 복구 절차 검증
-- [ ] P0 (ALL) `README.md` (한국어): 실행·테스트·구조 요약
+- [x] P0 (ALL) `README.md` (한국어): 실행·테스트·구조 요약
 - [ ] P0 (ALL) `docs/handover.md`: 폴더 구조, 모듈 역할, 자주 하는 수정 5가지
   - [ ] **소싱처(도매몰) 추가** ← 가장 먼저, 가장 자세히
   - [ ] 채널 필드 추가/변경

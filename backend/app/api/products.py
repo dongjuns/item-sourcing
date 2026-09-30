@@ -10,9 +10,10 @@ from app.api.dependencies import DB, Worker
 from app.models import Job, Product
 from app.schemas.api import AssetRead, CollectRequest, JobAccepted, JobRead
 from app.schemas.listing import GenerateRequest, ListingRead
-from app.schemas.product import ProductRead
+from app.schemas.product import ProductQuote, ProductRead
 from app.services.assets import list_assets
 from app.services.jobs import prepare_collect, prepare_generation
+from app.services.quote import product_quote
 
 router = APIRouter()
 
@@ -50,6 +51,16 @@ def product(product_id: UUID, db: DB) -> ProductRead:
 @router.get("/products/{product_id}/raw")
 def raw(product_id: UUID, db: DB) -> dict[str, JsonValue]:
     return product(product_id, db).raw
+
+
+@router.get("/products/{product_id}/quote")
+def quote(
+    product_id: UUID,
+    db: DB,
+    quantity: int = Query(ge=1),
+    option_id: str | None = None,
+) -> ProductQuote:
+    return product_quote(product(product_id, db), quantity, option_id)
 
 
 @router.get("/products/{product_id}/assets")

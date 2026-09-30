@@ -38,7 +38,13 @@ def create_app(config: Config | None = None, engine: Engine | None = None) -> Fa
             raise RuntimeError("DB 준비 실패. make migrate와 DB 실행 상태를 확인하세요.") from None
         yield
 
-    app = FastAPI(title="상품 소싱 검토", lifespan=lifespan, docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title="상품 소싱 검토",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.runner = runner
 
     def db_session() -> Generator[Session, None, None]:

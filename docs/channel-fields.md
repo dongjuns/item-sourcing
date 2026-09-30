@@ -1,6 +1,6 @@
 # 외부 연동 필드 대응과 확인 항목
 
-작성일: 2026-09-30. 상태: 내부 매핑 초안. 외부 필드명·필수 조건·제한 수치·API 버전은 아직 공식 문서와 계정에서 검증하지 않았다. 아래 표는 실제 전송 payload가 아니다.
+작성일: 2026-09-30. 갱신일: 2026-10-01. 도매꾹 상품상세정보 4.6과 상품 63749955의 실제 조회를 확인했다. 판매 채널 규격·등록 payload는 미검증이며 현재 구현 범위에서 보류한다.
 
 ## 확인 상태의 의미
 
@@ -12,27 +12,27 @@
 
 | 표준 Product 필드 | 도매꾹 외부 대응 | 오너클랜 외부 대응 | 확인할 내용 |
 | --- | --- | --- | --- |
-| source_product_id | 확인 필요 | 확인 필요 | 상품 URL·상품 ID 추출 규칙 |
-| name / currency | 확인 필요 | 확인 필요 | 상품명·가격 통화 |
-| wholesale_price | 확인 필요 | 확인 필요 | 공급가·세금 포함 여부·회원 등급별 가격 |
-| minimum_order_quantity | 확인 필요 | 확인 필요 | 최소 수량·주문 단위 |
-| options | 확인 필요 | 확인 필요 | 옵션 조합·옵션 가격이 총액인지 추가금인지 |
-| stock_quantity / available | 확인 필요 | 확인 필요 | 재고 공개 여부·품절·미확인의 구분 |
-| images | 확인 필요 | 확인 필요 | 대표·추가·상세 이미지 구분과 URL |
-| detail_html | 확인 필요 | 확인 필요 | HTML 제공 범위와 재사용 조건 |
-| shipping | 확인 필요 | 확인 필요 | 배송비·묶음배송·도서산간·출고 기준 |
+| source_product_id | basis.no, 숫자 상품 경로와 URL no 인자 | 확인 필요 | 상품 URL·상품 ID 추출 규칙 |
+| name / currency | basis.title / KRW, 공식 가격 설명의 원 단위 | 확인 필요 | 상품명·가격 통화 |
+| wholesale_price | price.dome, 수량별 가격은 price_tiers로 분리 | 확인 필요 | 공급가·세금 포함 여부·회원 등급별 가격 |
+| minimum_order_quantity | qty.domeMoq, 구매 단위 qty.domeUnit | 확인 필요 | 최소 수량·주문 단위 |
+| options | selectOpt JSON, 옵션 단가 해석 미검증 | 확인 필요 | 옵션 조합·옵션 가격이 총액인지 추가금인지 |
+| stock_quantity / available | qty.inventory, available은 미확인 시 null | 확인 필요 | 재고 공개 여부·품절·미확인의 구분 |
+| images | thumb.original과 desc.contents.item의 img | 확인 필요 | 대표·추가·상세 이미지 구분과 URL |
+| detail_html | desc.contents.item, detail_text는 HTML 텍스트 추출 | 확인 필요 | HTML 제공 범위와 재사용 조건 |
+| shipping | deli.dome.fee·type·tbl, deli.pay·feeExtra | 확인 필요 | 배송비·묶음배송·도서산간·출고 기준 |
 | raw | 내부 설계 | 내부 설계 | 인증정보 제외한 원본 응답 보존 |
 
 | 항목 | 도매꾹 | 오너클랜 | 실연동 전 완료 기준 |
 | --- | --- | --- | --- |
 | API 키 | env 변수 DOMEGGOOK_API_KEY 설정 존재 확인 | 계정 확인 필요 | 실제 값은 config에서만 읽고 문서·로그·fixture 제외 |
 | API 승인·권한·계정 등급 | 계정 확인 필요 | 계정 확인 필요 | 키 존재와 별개로 상품 조회 권한 확인 |
-| 공식 endpoint·인증 인자·응답 버전 | 확인 필요 | 확인 필요 | 공식 문서와 정상 조회 응답 비교 |
+| 공식 endpoint·인증 인자·응답 버전 | 상품상세정보 getItemView 4.6, 실제 조회 성공 | 확인 필요 | 공식 문서와 정상 조회 응답 비교 |
 | 요청 제한·브라우저 대체 허용 조건 | 확인 필요 | 확인 필요 | 외부 정책과 내부 2초 이상·동시 1개 적용 |
 | 이미지·상세 재사용 범위 | 확인 필요 | 확인 필요 | 공급자·상품별 사용 조건 확인 |
-| 실제 녹화 fixture | 미확보 | 미확보 | 정상·옵션·부분 누락·실패 응답 비밀 제거 |
+| 실제 녹화 fixture | tests/fixtures/domeggook/product_recorded.json | 미확보 | 정상·옵션·부분 누락·실패 응답 비밀 제거 |
 
-2026-09-30 로컬 점검에서 .env의 DOMEGGOOK_API_KEY가 비어 있지 않은 설정임을 확인했다. API 호출·권한 검증은 수행하지 않았다. .env는 .gitignore 대상이며 현재 Git 추적 파일이 아니다.
+상품 63749955 조회·대표 및 본문 사진 저장을 검증했다. 해당 키의 이 상품 조회 성공만 확인한 것이며 다른 API 권한·계정 등급을 보장하지 않는다. .env는 Git 제외 대상이며 추적하지 않는다.
 
 ## 판매 채널 필드 대응
 
@@ -42,13 +42,13 @@
 | --- | --- | --- | --- |
 | title | 확인 필요 | 확인 필요 | 길이·금지 문구·인코딩 |
 | category_code | 확인 필요 | 확인 필요 | 카테고리 검색·말단 분류·관련 고시 |
-| detail_html | 확인 필요 | 확인 필요 | 허용 태그·외부 이미지·길이 |
+| detail_html | desc.contents.item, detail_text는 HTML 텍스트 추출 | 확인 필요 | 허용 태그·외부 이미지·길이 |
 | selected_thumbnail_id / images | 확인 필요 | 확인 필요 | 개수·해상도·형식·파일 용량·업로드 |
 | sale_price / currency | 확인 필요 | 확인 필요 | 가격 단위·범위·세금 |
 | options / stock_quantity | 확인 필요 | 확인 필요 | 옵션 이름·조합·판매가·재고 |
 | notices | 확인 필요 | 확인 필요 | 카테고리별 상품정보 고시 |
 | channel_fields.origin / certifications | 확인 필요 | 확인 필요 | 원산지·인증 종류·증빙 |
-| shipping | 확인 필요 | 확인 필요 | 배송비·묶음배송·출고지·반품지 |
+| shipping | deli.dome.fee·type·tbl, deli.pay·feeExtra | 확인 필요 | 배송비·묶음배송·출고지·반품지 |
 | channel_fields.seller_product_code | 확인 필요 | 확인 필요 | 내부 관리 코드·중복 검사 지원 |
 | channel_fields.sale_period | 확인 필요 | 확인 필요 | 판매 기간·상품 노출 설정 |
 | channel_credentials | 계정 확인 필요 | 계정 확인 필요 | 판매자 ID·권한·키·허용 IP 조건 |
@@ -80,11 +80,11 @@
 
 ## 규격 확인 기록 양식
 
-실제 조사 시 아래 표에 한 행씩 추가한다. 현재 확인 완료된 외부 필드 매핑은 없다.
+실제 조사 시 아래 표에 한 행씩 추가한다. 아래는 도매꾹 수집 확인 기록이며 채널 등록 규격은 계속 미확인이다.
 
 | 대상·필드 | 확인값 | 공식 근거 URL·버전·확인일 | 계정 적용 여부 | fixture·테스트 | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| 도매꾹 상품 조회 | 미확인 | 미확인 | 키 설정 존재, 조회 권한 미확인 | 미확보 | 확인 필요 |
+| 도매꾹 상품 조회 | getItemView 4.6 | 아래 공식 문서, 2026-10-01 | 상품 63749955 조회 성공 | product_recorded.json, test_domeggook.py | 해당 상품 검증 완료 |
 
 ## 다음 확인 순서
 
@@ -93,3 +93,5 @@
 3. 오너클랜 계정 조건·응답을 같은 절차로 확인한다.
 4. AI 공급자·비용 상한·이미지 사용 조건을 정한다.
 5. 기존 판매 상품 샘플과 채널 공식 문서로 등록 매핑을 확인한다. 테스트 등록은 사람이 화면에서 실행한다.
+
+공식 근거: [도매꾹 상품상세정보 4.6](https://openapi.domeggook.com/ko/articles/%EC%83%81%ED%92%88%EC%83%81%EC%84%B8%EC%A0%95%EB%B3%B4-933abc24). 실제 응답의 license.usable은 문자열 true여서 boolean도 함께 처리한다. 본문 사진 호스트 i.ifh.cc를 확인해 명시적 허용 목록에 추가했고 사설 IP·비표준 포트·인증정보·리다이렉트 차단은 유지했다. 수량별비례 배송비와 옵션 금액은 확인 필요다.

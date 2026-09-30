@@ -11,7 +11,7 @@ from app.models import Job, Product
 from app.schemas.product import Issue, ProductData
 from app.services.assets import download_images
 
-JSON_PRODUCT_FIELDS = {"raw", "options", "images", "shipping", "issues"}
+JSON_PRODUCT_FIELDS = {"raw", "options", "images", "shipping", "issues", "price_tiers"}
 
 
 def product_record(data: ProductData) -> Product:

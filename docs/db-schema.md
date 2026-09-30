@@ -1,6 +1,6 @@
 # 상품 소싱 도구 데이터베이스 설계
 
-작성일: 2026-09-30. 상태: ERD v1. PostgreSQL 논리 설계이며 실제 DB 변경·Alembic 적용은 하지 않았다. 모델 구현 시 이 문서와 초기 마이그레이션을 함께 검증한다.
+작성일: 2026-09-30. 갱신일: 2026-10-01. 초기 7개 테이블과 상품 수집 필드 추가 마이그레이션을 구현하고 SQLite에서 적용했다. PostgreSQL 실실행은 미검증이며 논리 설계와 실제 SQLite 검증을 구분한다.
 
 ## 공통 규칙
 
@@ -88,9 +88,12 @@ erDiagram
 | collection_status | text NOT NULL | complete / partial / failed |
 | name / currency | text NULL / text NULL | 상품명과 원본으로 확인된 통화 |
 | wholesale_price | numeric NULL, 0 이상 | 상품 기본 도매가. 옵션별 차이는 options에 기록 |
+| price_tiers | jsonb NOT NULL, 기본 빈 배열 | 최소 수량과 적용 단가. 수량별 차등 가격이 있으면 기본 도매가는 null일 수 있음 |
 | minimum_order_quantity / stock_quantity | integer NULL, 0 이상 | 최소 주문 수량과 상품 전체 재고 |
+| purchase_unit / maximum_order_quantity | integer NULL, 1 이상 | 구매 단위와 최대 구매 수량 |
 | options / images / shipping | jsonb NULL | 표준 옵션·이미지 참조·배송 조건 |
 | detail_html | text NULL | 수집 상세 HTML. 화면에 직접 렌더링하지 않음 |
+| detail_text | text NULL | HTML 본문에서 추출한 실제 설명 텍스트. 이미지 OCR 결과가 아님 |
 | raw | jsonb NOT NULL | 인증정보를 제외한 원본 상품 응답 |
 | issues | jsonb NOT NULL, 빈 배열 가능 | 누락·정규화 오류·다운로드 경고 |
 | created_at | timestamptz NOT NULL | 저장 시각 |
