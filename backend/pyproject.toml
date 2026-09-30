@@ -1,0 +1,34 @@
+[project]
+name = "itemsourcing-backend"
+version = "0.1.0"
+description = "상품 URL 수집과 AI 콘텐츠 검토 도구"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "sqlalchemy>=2.0,<3",
+  "alembic>=1.13,<2", "psycopg[binary]>=3.2,<4", "pydantic-settings>=2.6,<3",
+  "httpx>=0.27,<1", "pillow>=11,<13", "bleach>=6.2,<7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.24,<2", "ruff>=0.9,<1", "mypy>=1.14,<2", "types-bleach>=6,<7"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false

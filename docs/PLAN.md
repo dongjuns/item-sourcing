@@ -1,7 +1,11 @@
 # PLAN.md — AI 상품 소싱·상세페이지 생성·판매채널 자동 등록 프로그램
 
+> 현재 구현 목표(2026-09-30 변경): 사용자가 입력한 도매꾹 상품 상세 URL → 상품 정보·이미지 수집 → AI 상세페이지·썸네일 생성 → 사람의 검토·편집·확정까지. 판매 채널 등록은 후속 단계로 보류한다. 아래 등록 범위와 일정은 초기 장기 계획이며 현재 구현 대상이 아니다. 도매꾹은 수집 소싱처이며 등록 대상이 아니다. AI 계정은 개발 계정을 먼저 사용하고 이후 클라이언트 계정으로 설정을 교체한다.
+
 > 제안서(2026-09-30) 1차 필수 범위 기준. 착수 2026-10-20, 완료 2026-11-30.
 > 대량 처리 아님. 1인 사업자가 하루 몇 건 등록하는 개인용 도구.
+
+> 2026-09-30 설계 v1: [요구사항](requirements.md), [화면 설계](screens/README.md), [DB와 ERD](db-schema.md), [어댑터 계약](adapter-contracts.md), [규격 확인 목록](channel-fields.md)을 작성했다. 내부 상세 설계는 이 문서들을 따른다. 외부 규격·발주자 검수·실연동은 별도 확인한다.
 
 ## 0. 우선순위 (발주자 확정, 2026-09-30)
 
@@ -10,7 +14,7 @@
 | 순위 | 항목 | 세부 |
 | --- | --- | --- |
 | **1** | **도매몰 상품 정보 수집** | 도매꾹 **필수**. 이후 오너클랜 등 소싱처를 계속 늘릴 수 있는 구조가 중요 (어댑터 1파일 = 1소싱처) |
-| 1-보류 | 수동 입력 | 구조는 열어 두되 구현은 보류. 수집 실패 시 원본 화면 링크 + 빈 폼 정도만 |
+| 1-보류 | 수동 입력 | 요청 스키마만 예약. 수집 실패 시 원본 링크·사유·재시도 안내, 입력 폼과 저장 API는 보류 |
 | 1-선택 | 상품 후보 자동 필터링 | 있으면 좋음. "어디에 어떤 상품이 있고 무엇이 좋은지" 찾는 일을 줄이는 기능 |
 | **2** | **AI 상세페이지·썸네일 생성** | 채널별 형식에 맞춰 생성, 사람이 검토·확정 |
 | **3** | **판매 채널 자동 등록** | 쿠팡, 스마트스토어 순. 가장 마지막 단계, 일정 부족 시 반자동(등록용 파일 내보내기)으로 축소 가능 |
@@ -35,7 +39,7 @@ URL 하나를 넣으면 `수집 → AI 상세/썸네일 생성 → 검토·수�
 
 ```
 ┌─────────────── frontend (React + TS, Vite) ───────────────┐
-│ 후보탐색 │ 상품입력(URL/수동) │ 생성·검토 │ 등록·이력 │ 설정 │
+│ 후보탐색(P1) │ 상품입력(URL) │ 생성·검토 │ 등록·이력 │ 설정 │
 └──────────────────────────┬────────────────────────────────┘
                            │ REST (JSON)
 ┌──────────────────────────▼────────────────────────────────┐
@@ -43,12 +47,12 @@ URL 하나를 넣으면 `수집 → AI 상세/썸네일 생성 → 검토·수�
 │  api/            라우터                                    │
 │  services/       유스케이스 (수집·생성·등록·탐색)           │
 │  adapters/                                                 │
-│    sources/      오너클랜, 도매꾹, manual   ← 도매몰별 1파일 │
+│    sources/      오너클랜, 도매꾹           ← 도매몰별 1파일 │
 │    channels/     coupang, smartstore        ← 채널별 1파일  │
 │    ai/           text (LLM), image           ← 모델 교체점  │
-│    market/       naver_shopping, kamis(고시가)              │
+│    market/       naver_shopping(P1), kamis(P2)             │
 │  models/ + db/   SQLAlchemy + Alembic                       │
-│  workers/        백그라운드 작업 (수집·생성·등록 큐)         │
+│  workers/        단일 프로세스 백그라운드 작업              │
 └──────────────────────────┬────────────────────────────────┘
                  PostgreSQL │ 파일 저장(로컬/S3 호환)
 ```
@@ -69,36 +73,38 @@ URL 하나를 넣으면 `수집 → AI 상세/썸네일 생성 → 검토·수�
 class SourceAdapter(Protocol):
     name: str
     def matches(self, url: str) -> bool: ...
-    def fetch(self, url: str) -> RawProduct: ...          # 원본 그대로
-    def normalize(self, raw: RawProduct) -> Product: ...  # 표준 모델
+    async def fetch(self, url: str) -> FetchResult: ...  # 원본과 오류 격리
+    def normalize(self, raw: RawProduct) -> NormalizeResult: ...  # 표준 모델과 누락
 
 # adapters/channels/base.py
 class ChannelAdapter(Protocol):
     name: str
     def validate(self, listing: Listing) -> list[Issue]: ...   # 등록 전 검사
-    def build_payload(self, listing: Listing) -> dict: ...      # 채널 규격 변환  [CHANNEL-SPEC]
-    def register(self, payload: dict) -> RegisterResult: ...    # 등록 호출
-    def categories(self, query: str) -> list[Category]: ...     # 카테고리 검색
+    def build_payload(self, listing: Listing) -> dict[str, object]: ...  # 채널 규격 변환
+    async def register(self, payload: dict[str, object]) -> RegisterResult: ...
+    async def categories(self, query: str) -> CategoryResult: ...  # 검색 오류 격리
 
 # adapters/ai/base.py
 class TextGenerator(Protocol):
-    def generate_detail(self, product: Product, channel: str, tone: str) -> DetailContent: ...
+    async def generate_detail(self, product: Product, channel: str, tone: str) -> DetailResult: ...
 class ImageGenerator(Protocol):
-    def generate_thumbnails(self, product: Product, n: int = 3) -> list[ImageRef]: ...
+    async def generate_thumbnails(self, product: Product, n: int = 3) -> ImageResult: ...
 ```
 
-## 5. 데이터 모델 (초안)
+## 5. 데이터 모델
+
+상세 컬럼·제약·상태 전이는 [DB 설계](db-schema.md)와 [어댑터 계약](adapter-contracts.md)에 정의한다. listings는 검토 상태를, registrations는 시도 결과를 관리한다. 등록 실패 시 listing은 confirmed를 유지하고 시도 이력만 failed가 된다. 수정·재생성은 재확정을 요구한다.
 
 | 테이블 | 용도 | 주요 컬럼 |
 | --- | --- | --- |
-| `products` | 표준화된 상품 원본 | id, source, source_url, name, wholesale_price, options(jsonb), images(jsonb), raw(jsonb), created_at |
-| `listings` | 채널별 등록용 콘텐츠 | id, product_id, channel, title, detail_html, thumbnail_ids, sale_price, category_code, status(draft/confirmed/registered/failed) |
-| `assets` | 생성·수집 이미지 | id, listing_id, kind(thumb/detail/source), path, prompt |
-| `registrations` | 채널 등록 이력 | id, listing_id, channel, external_id, request(jsonb), response(jsonb), status, error, created_at |
-| `candidates` | 후보 탐색 결과 | id, query_id, source, url, name, wholesale_price, est_sale_price, margin_rate, competitor_min_price, competitor_count, kamis(jsonb), score |
-| `candidate_queries` | 탐색 조건 저장 | id, params(jsonb), created_at |
-| `settings` | 수수료율·배송비·기본 톤 등 | key, value(jsonb) |
-| `jobs` | 백그라운드 작업 | id, kind, payload, status, log, created_at |
+| `products` | 표준화된 상품 원본 | id, source, source_url, collection_status, name, wholesale_price, options, images, shipping, detail_html, raw, issues |
+| `listings` | 채널별 등록용 콘텐츠 | id, product_id, channel, content_mode, title, detail_html, thumbnail_ids, sale_price, category_code, status(draft/confirmed/registered), content_version, confirmed_version |
+| `assets` | 생성·수집 이미지 | id, product_id, listing_id(nullable), kind, status, path, prompt |
+| `registrations` | 채널 등록 시도 이력 | id, listing_id, content_version, listing_snapshot, mode, external_id, request, response, status, resolution |
+| `settings` | 일반 설정과 암호화 비밀 | key, value, encrypted_value |
+| `jobs` | 백그라운드 작업 | id, kind, target_key, payload, result, status, log |
+| `ai_calls` | 호출별 비용 예약·정산 | id, job_id, budget_day, budget_month, reserved_cost_krw, actual_cost_krw, status, pricing_snapshot, resolution |
+| `candidates` / `candidate_queries` | P1 후보 탐색 | 조건, 결과, 출처·시각, 비용 반영 잔액·잔액률. P0 DB 생성에서 제외 |
 
 ## 6. 기술 스택 및 선택 이유
 
@@ -109,7 +115,7 @@ class ImageGenerator(Protocol):
 | DB | PostgreSQL 16 | 무료·안정·jsonb |
 | 수집 | httpx(API) → 없으면 Playwright | API 우선, 화면 변경 내성 |
 | AI | 텍스트: Anthropic/OpenAI API, 이미지: 이미지 생성 API | 한 파일에서만 호출, 교체 용이, 비용 상한 |
-| 작업 큐 | FastAPI BackgroundTasks → 필요 시 arq/Redis | 1인 사용량이면 단순 구성으로 충분 |
+| 백그라운드 작업 | FastAPI BackgroundTasks + PostgreSQL jobs | 단일 프로세스 직렬 실행, 중단 작업은 사람이 재시도 |
 | 배포 | Docker Compose (api, web, db) 소형 VM 1대 | 명령 한 줄 재시작·이전 |
 | 테스트 | pytest, 어댑터별 fixture(녹화된 응답) | 외부 서비스 없이 재현 |
 
@@ -131,7 +137,7 @@ class ImageGenerator(Protocol):
 
 - [ ] 쿠팡 Wing Open API 승인 + Access/Secret Key
 - [ ] 네이버 커머스 API 애플리케이션 승인 + Client ID/Secret
-- [ ] 오너클랜·도매꾹 계정 등급 및 API 이용 가능 여부
+- [ ] 오너클랜·도매꾹 계정 등급 및 API 이용 가능 여부 (도매꾹 env 키 설정 존재 확인, 권한·실조회는 미확인)
 - [ ] 생성형 AI API 키 발급 및 월 비용 상한 합의
 - [ ] 기존 등록 상품 2~3건 샘플(채널별 카테고리·옵션 구조)
 - [ ] 도매몰 이미지 저작권 사용 범위 확인
@@ -142,8 +148,8 @@ class ImageGenerator(Protocol):
 
 | 리스크 | 영향 | 대응 |
 | --- | --- | --- |
-| 채널 API 승인 지연 | W4 지연 | mock 기반 선개발, 승인은 계약 전 신청 |
-| 도매몰 API 없음/제한 | 수집 불안정 | Playwright 대체 + 수동 입력 경로 보장 |
+| 채널 API 승인 지연 | W5 등록 지연 | mock 기반 선개발, 승인은 계약 전 신청 |
+| 도매몰 API 없음/제한 | 수집 불안정 | 허용되는 Playwright 대체, 실패 시 원본 링크·사유·재시도 안내 |
 | 채널 정책·규격 변경 | 등록 실패 | 어댑터 격리, `[CHANNEL-SPEC]` 주석, 검증 단계에서 사전 오류 표시 |
 | AI 생성 품질·비용 | 재작업 | 프롬프트 템플릿 파일화, 생성 수 제한, 토큰 사용량 로그 |
 | 1인 검수 병목 | 일정 | 주 1회 고정 검수 시점(7항) |

@@ -1,0 +1,11 @@
+{
+  "domeggook": {
+    "basis": {"no": 100001, "title": "테스트 수납 상자", "status": "판매중"},
+    "price": {"dome": 5000},
+    "qty": {"inventory": 120, "domeMoq": 2},
+    "deli": {"dome": {"type": "고정배송비", "fee": 3000}, "periodDeli": 1},
+    "thumb": {"original": "https://cdn1.domeggook.com/mock/main.jpg"},
+    "desc": {"license": {"usable": true}, "contents": {"item": "<p>테스트 상품 설명</p><img src=\"https://cdn1.domeggook.com/mock/detail.jpg\">"}},
+    "selectOpt": "{\"data\":{\"00\":{\"name\":\"화이트\",\"qty\":\"60\",\"domPrice\":\"0\"}}}"
+  }
+}
