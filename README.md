@@ -45,6 +45,8 @@ npm run dev
 
 ## 실제 유료 생성 준비
 
+개발 검증용 기본 모델은 텍스트 gpt-4.1-mini와 이미지 gpt-image-1.5다. 각각 [공식 텍스트 모델 문서](https://developers.openai.com/api/docs/models/gpt-4.1-mini)와 [공식 이미지 모델 문서](https://developers.openai.com/api/docs/models/gpt-image-1.5)의 규격을 확인했다. 이미지 호출은 1024x1024·low·썸네일 3장으로 준비한다. 모델의 실제 계정 접근 권한과 유료 결과는 별도 검증한다.
+
 기존 .env에 개발 계정의 OPENAI_API_KEY와 AI_TEXT_MODEL·AI_IMAGE_MODEL·AI_MODE=live를 설정하고 API를 재시작한다. 키를 채팅·설정 화면·문서에 입력하지 않는다. 설정 화면에서 일·월 비용 한도, 텍스트 1회와 썸네일 3장 1회의 예약 상한, 모델 가격 확인 URL·확인일을 저장한다. 한도를 설정하지 않은 상태에서 유료 호출은 차단된다.
 
 전체 생성은 선택한 채널마다 텍스트 1회와 공통 썸네일 3장 1회를 호출한다. 전체 예약액이 남은 일·월 한도를 넘으면 첫 호출 전 거부한다. 모델을 바꾸면 가격 근거도 다시 확인해 저장한다. OpenAI 입력에는 원본 JSON·HTML 대신 정규화된 상품 사실과 설명 텍스트를 전달한다.

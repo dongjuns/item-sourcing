@@ -41,8 +41,10 @@
 
 기존 수집 상품을 조회했으며 도매꾹 재수집·AI 생성·콘텐츠 수정·판매 채널 등록은 실행하지 않았다. 결과는 Git 제외 경로 assets/verification/runtime-result.json에 저장했다. 이는 실행 서버의 HTTP 검증이며 화면 버튼 클릭 검증과 구분한다. API는 검증용 임시 인증과 AI_MODE=mock으로 실행하며 기존 .env의 비밀 값은 변경하지 않았다.
 
+비어 있던 개발용 모델 설정은 gpt-4.1-mini·gpt-image-1.5로 준비했다. 공식 규격에서 텍스트 구조화 출력과 이미지 편집·3장 출력 지원을 확인했다. [.env.example](../.env.example)에 모델 이름만 반영하고 실제 키·가격 상한·과금 확인 여부는 임의로 채우지 않았다. 실제 계정 접근과 유료 결과는 아직 미검증이다. 근거: [텍스트 모델](https://developers.openai.com/api/docs/models/gpt-4.1-mini), [이미지 모델](https://developers.openai.com/api/docs/models/gpt-image-1.5), [이미지 편집 API](https://developers.openai.com/api/reference/resources/images/methods/edit).
+
 ## 남은 검증과 구현
 
-이번 작업은 **화면 버튼 검증과 실제 유료 AI 생성**까지로 제한한다. 연결된 Browser가 없어 화면에서 버튼을 누르는 검증은 수행하지 못했다. 실제 OpenAI 계정·모델·가격 근거·검증 비용 상한이 준비되지 않아 유료 생성은 실행하지 않았다. 이 두 검증은 완료로 표시하지 않는다.
+이번 작업은 **화면 버튼 검증과 실제 유료 AI 생성**까지로 제한한다. 연결된 Browser가 없어 화면에서 버튼을 누르는 검증은 수행하지 못했다. 실제 OpenAI 계정·가격 근거·검증 비용 상한이 준비되지 않아 유료 생성은 실행하지 않았다. 이 두 검증은 완료로 표시하지 않는다.
 
 PostgreSQL 실실행·Docker·CI·운영 백업은 발주자 요청으로 보류한다. 옵션 가격 해석·수량별비례 배송비·지역 추가금 계산과 이미지 OCR도 후속 작업이다.
