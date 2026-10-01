@@ -4,7 +4,6 @@ import argparse
 import json
 
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 
 from app.core.config import Config
 from app.db.session import build_engine
@@ -15,12 +14,10 @@ def verify(url: str) -> int:
     config = Config(
         source_mode="live",
         ai_mode="mock",
-        basic_auth_password=SecretStr("verification-only-password"),
     )
     engine = build_engine(config.database_url.get_secret_value())
     app = create_app(config, engine)
     with TestClient(app) as client:
-        client.auth = (config.basic_auth_username, "verification-only-password")
         response = client.post("/api/products/from-url", json={"url": url})
         if response.status_code != 202:
             print("수집 요청이 거부됐습니다. 설정과 URL을 확인하세요.")

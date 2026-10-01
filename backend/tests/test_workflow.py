@@ -82,8 +82,11 @@ def test_generate_edit_confirm_and_reconfirmation(client: TestClient) -> None:
     assert client.post(endpoint + "/register", json={}).status_code == 404
 
 
-def test_auth_and_unsupported_source(client: TestClient) -> None:
-    assert client.get("/api/products", auth=("owner", "wrong-password")).status_code == 401
+def test_no_login_required_and_unsupported_source(client: TestClient) -> None:
+    assert client.get("/api/products").status_code == 200
+    settings = client.get("/api/settings")
+    assert settings.status_code == 200
+    assert "securitySchemes" not in client.app.openapi().get("components", {})
     assert (
         client.post("/api/products/from-url", json={"url": "https://evil.test/product"}).status_code
         == 409

@@ -1,4 +1,4 @@
-"""내부 경로 대신 인증된 자산 ID로 파일을 제공한다."""
+"""내부 경로 대신 자산 ID로 파일을 제공한다."""
 
 from typing import Annotated
 from uuid import UUID

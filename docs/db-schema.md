@@ -192,7 +192,7 @@ queued·running의 (kind, target_key)에 부분 UNIQUE 인덱스를 둔다. gene
 
 ## settings 일반 설정과 암호화 값
 
-key(text PK), value(jsonb NULL), encrypted_value(text NULL), updated_at(timestamptz NOT NULL)를 둔다. 일반 설정은 value만, 비밀 설정은 encrypted_value만 사용하도록 CHECK를 둔다. 암호화 키와 기본 인증 비밀번호는 env에서 읽는다.
+key(text PK), value(jsonb NULL), encrypted_value(text NULL), updated_at(timestamptz NOT NULL)를 둔다. 일반 설정은 value만, 비밀 설정은 encrypted_value만 사용하도록 CHECK를 둔다. 암호화 키는 env에서 읽는다. 로그인 비밀번호는 사용하지 않는다.
 
 | 키 또는 키 그룹 | 값과 초기 상태 |
 | --- | --- |

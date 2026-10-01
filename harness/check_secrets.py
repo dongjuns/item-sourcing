@@ -37,7 +37,6 @@ def configured_secrets() -> list[bytes]:
         for value in (
             config.domeggook_api_key,
             config.openai_api_key,
-            config.basic_auth_password,
         )
         if value.get_secret_value()
     ]

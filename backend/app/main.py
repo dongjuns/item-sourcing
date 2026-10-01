@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
@@ -13,7 +13,6 @@ from app.adapters.registry import Registry
 from app.api import assets, listings, products, settings
 from app.core.config import Config, get_config
 from app.core.logging import configure_logging
-from app.core.security import require_auth
 from app.db.seed import seed_settings
 from app.db.session import build_engine, get_session
 from app.services.budget import BudgetError
@@ -62,9 +61,9 @@ def configure_routes(app: FastAPI, config: Config) -> None:
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_methods=["GET", "POST", "PATCH"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Content-Type"],
     )
-    api = APIRouter(prefix="/api", dependencies=[Depends(require_auth)])
+    api = APIRouter(prefix="/api")
     for router in (products.router, listings.router, settings.router, assets.router):
         api.include_router(router)
     app.include_router(api)

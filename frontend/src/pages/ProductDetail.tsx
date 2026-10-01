@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { request, type Asset, type Product } from "../api/client";
 import { money, statusLabel } from "../api/display";
 import { AssetImage } from "../components/AssetImage";
@@ -44,11 +44,7 @@ export function ProductDetail() {
           <div className="eyebrow">02 SOURCE DATA</div>
           <h1>{product.name || "수집 실패 상품"}</h1>
         </div>
-        {product.collection_status !== "failed" && (
-          <Link className="button" to={`/products/${id}/review`}>
-            AI 생성·검토
-          </Link>
-        )}
+        <button disabled>AI 생성 보류</button>
       </div>
       <div className="summary-grid">
         <div className="stat">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter,
   NavLink,
@@ -6,23 +6,35 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
-import { clearCredentials, type Settings } from "./api/client";
-import { Login } from "./pages/Login";
+import { request, type Settings } from "./api/client";
 import { ProductDetail } from "./pages/ProductDetail";
 import { ProductInput } from "./pages/ProductInput";
 import { ProductList } from "./pages/ProductList";
-import { Review } from "./pages/Review";
 import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
-  if (!settings) return <Login onLogin={setSettings} />;
+  const [error, setError] = useState("");
+  const loadSettings = useCallback(() => {
+    setError("");
+    request<Settings>("/settings")
+      .then(setSettings)
+      .catch((reason) => setError((reason as Error).message));
+  }, []);
+  useEffect(loadSettings, [loadSettings]);
+  if (!settings)
+    return (
+      <main className="main-content">
+        <p role="status">{error || "상품 화면을 준비하는 중입니다."}</p>
+        {error && <button onClick={loadSettings}>연결 다시 확인</button>}
+      </main>
+    );
   return (
     <BrowserRouter>
       <div className="app-shell">
         <aside className="sidebar">
           <div className="brand">
-            ITEM SOURCING<small>상품 수집부터 검토까지</small>
+            ITEM SOURCING<small>상품 URL에서 정보 수집</small>
           </div>
           <nav>
             <NavLink to="/products" end>
@@ -32,16 +44,7 @@ export default function App() {
             <NavLink to="/settings">설정</NavLink>
           </nav>
           <div className="sidebar-footer">
-            <span>검토·확정까지 구현</span>
-            <button
-              className="secondary"
-              onClick={() => {
-                clearCredentials();
-                setSettings(null);
-              }}
-            >
-              로그아웃
-            </button>
+            <span>상품 정보·사진 수집</span>
           </div>
         </aside>
         <main className="main-content">
@@ -52,10 +55,6 @@ export default function App() {
               element={<ProductInput settings={settings} />}
             />
             <Route path="/products/:id" element={<ProductDetail />} />
-            <Route
-              path="/products/:id/review"
-              element={<Review settings={settings} />}
-            />
             <Route
               path="/settings"
               element={

@@ -71,7 +71,6 @@ class FixtureSource:
 def client(tmp_path: Path) -> Iterator[TestClient]:
     config = Config(
         _env_file=None,
-        basic_auth_password=SecretStr("test-password"),
         domeggook_api_key=SecretStr(""),
         openai_api_key=SecretStr(""),
         source_mode="mock",
@@ -88,6 +87,5 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
     app.state.runner.registry.sources = [FixtureSource(config, http)]
     app.state.runner.registry.http = http
     with TestClient(app) as test_client:
-        test_client.auth = ("owner", "test-password")
         yield test_client
     engine.dispose()

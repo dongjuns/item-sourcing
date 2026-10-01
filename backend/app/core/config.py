@@ -15,8 +15,6 @@ class Config(BaseSettings):
         env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
     database_url: SecretStr = SecretStr("sqlite+pysqlite:///./itemsourcing.sqlite3")
-    basic_auth_username: str = "owner"
-    basic_auth_password: SecretStr = SecretStr("")
     domeggook_api_key: SecretStr = SecretStr("")
     openai_api_key: SecretStr = SecretStr("")
     source_mode: Literal["live", "mock"] = "live"

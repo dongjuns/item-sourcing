@@ -10,17 +10,6 @@ export type GenerateRequest = components["schemas"]["GenerateRequest"];
 export type GenerationPlan = components["schemas"]["GenerationPlan"];
 export type ListingPatch = components["schemas"]["ListingPatch"];
 
-let authorization = "";
-
-export function setCredentials(username: string, password: string) {
-  const bytes = new TextEncoder().encode(`${username}:${password}`);
-  authorization = `Basic ${btoa(String.fromCharCode(...bytes))}`;
-}
-
-export function clearCredentials() {
-  authorization = "";
-}
-
 export async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -29,7 +18,6 @@ export async function request<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
-      Authorization: authorization,
       ...init.headers,
     },
   });
@@ -45,9 +33,7 @@ export async function request<T>(
 }
 
 export async function assetBlob(id: string): Promise<string> {
-  const response = await fetch(`/api/assets/${id}`, {
-    headers: { Authorization: authorization },
-  });
+  const response = await fetch(`/api/assets/${id}`);
   if (!response.ok) throw new Error("이미지를 불러올 수 없습니다.");
   return URL.createObjectURL(await response.blob());
 }
