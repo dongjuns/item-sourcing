@@ -1,0 +1,78 @@
+# 상품 소싱과 AI 콘텐츠 검토 도구
+
+사용자가 입력한 도매꾹 상품 상세 URL에서 상품 정보와 이미지를 수집하고, AI 상세페이지·썸네일을 생성한 뒤 사람이 검토·편집·확정하는 1인용 도구다. 판매 채널 등록은 후속 범위로 보류했다.
+
+현재는 개발 중인 초안이다. 주신 상품 URL의 실제 수집·이미지 다운로드·본문 텍스트 추출·수량별 금액 계산을 검증했다. 현재 남은 작업은 수집 화면 버튼 검증이다. AI 상품 꾸미기·유료 생성·관련 연동은 보류했고 OpenAI 키·비용 상한 요청을 철회했다. 로그인 없이 바로 상품 화면을 연다. PostgreSQL 실실행·Docker·CI·운영 백업은 이번 작업에서 보류했다. 자세한 상태는 [검증 기록](docs/verification.md), [할 일](docs/TASKS.md), [문제 기록](docs/development-issues.md)을 따른다.
+
+## 구성
+
+- `backend/app/adapters/sources/`: 소싱처의 URL 판별·조회·표준화. 도매꾹은 상품 조회만 수행한다.
+- `backend/app/adapters/ai/`: 텍스트·이미지 생성 API와 명시적인 연습용 구현.
+- `backend/app/services/`: 수집, 이미지 저장, 생성, 예산 관리, 검토·확정.
+- `backend/app/db/migrations/`: 초기 DB 마이그레이션. 로컬 SQLite 검증 경로와 PostgreSQL 타입을 포함한다.
+- `frontend/src/`: 상품 입력·목록·수집 결과·설정 화면. 기존 AI 생성·검토 화면 작업은 보류한다.
+- `backend/prompts/`: 생성 프롬프트. 문구 수정은 여기서 한다.
+- `harness/`: 코드·문서의 영어·한글 사용 검사와 테스트.
+
+## 로컬 백엔드 개발
+
+Python 3.12 이상과 uv가 필요하다. `.env.example`을 참고해 저장소 루트의 `.env`를 설정한다. 이미 있는 `.env`를 덮어쓰지 않는다.
+
+환경설정은 `backend/app/core/config.py`를 따른다. 로그인·사용자 계정·비밀번호 설정은 필요하지 않다. `SOURCE_MODE=mock`, `AI_MODE=mock`에서는 연습용 데이터와 콘텐츠를 사용한다. 실제 도매꾹 조회는 `SOURCE_MODE=live`와 `DOMEGGOOK_API_KEY`를 사용한다. 실제 AI 호출에는 `OPENAI_API_KEY`, `AI_TEXT_MODEL`, `AI_IMAGE_MODEL`, `AI_MODE=live`와 DB의 일·월 예산 및 가격 근거 설정이 필요하다.
+
+```bash
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run python -m app.db.seed
+uv run uvicorn app.main:app --reload
+```
+
+기본 DB는 로컬 SQLite다. 운영용 PostgreSQL·Docker 실행 구성은 아직 완성되지 않았다.
+
+Node.js 22.12 이상을 사용해 프론트를 준비한다. 저장소 루트에서 아래 명령을 실행한다.
+
+```bash
+cd frontend
+npm ci
+npm run gen:api
+npm run dev
+```
+
+기본 접속 주소는 프론트 `http://127.0.0.1:5173`, API `http://127.0.0.1:8000`이다. 접속하면 바로 상품 목록이 열린다. 별도 API 포트는 프론트 실행 시 `API_PROXY_TARGET`으로 지정한다.
+
+화면 검증 서버를 터미널 종료와 분리해 실행하려면 의존성 설치와 DB 마이그레이션 후 저장소 루트에서 `make local-start`를 실행한다. 상품 화면은 `http://127.0.0.1:5174/`, API는 8001 포트를 사용한다. `make local-status`로 API·프론트·프록시 응답을 확인한다. 이 실행 경로는 SOURCE_MODE=live와 AI_MODE=mock을 적용해 유료 AI 호출을 막는다. 사용 중인 포트는 교체하지 않는다. 실행 PID는 `logs/local-dev.json`, 출력은 `logs/local-api.log`와 `logs/local-web.log`에 남기며 모두 Git에서 제외한다. 중지하려면 해당 프로세스가 이 서버인지 확인하고 표시된 PID에 `kill PID`를 실행한다. 이 명령은 개발용이며 운영 배포 구성이 아니다.
+
+수집 결과 화면에서 대표·본문 사진, HTML에서 추출한 설명 텍스트, 수량별 단가·상품금액·배송비·합계를 확인한다. 수량 기본값은 최소 주문 수량과 구매 단위를 따른다. 일반 지역 기본 배송비를 계산하며 지역 추가금·다른 상품 묶음배송·할인은 제외한다. 옵션 단가나 배송 규칙이 미확인이면 합계는 null이다. 이미지 안의 글자를 읽는 OCR은 아직 구현하지 않았다.
+
+배송정보에는 출고 준비일·택배 등 배송 방식·배송비 부담주체·묶음배송 가능 여부와 조건금액·지역 추가배송비를 표시한다. 무료배송은 기본 배송비 0원으로 계산한다. 묶음배송 조건금액은 무료배송 기준금액이 아니며, 해당 필드가 없으면 미확인으로 표시한다.
+
+## AI 생성 준비 기록 — 현재 보류
+
+아래는 기존 구현 설명이며 현재 작업의 준비 조건이 아니다. AI 작업 재개 요청 전에는 키 발급·모델 변경·비용 설정·실제 호출을 진행하지 않는다.
+
+개발 검증용 기본 모델은 텍스트 gpt-4.1-mini와 이미지 gpt-image-1.5다. 각각 [공식 텍스트 모델 문서](https://developers.openai.com/api/docs/models/gpt-4.1-mini)와 [공식 이미지 모델 문서](https://developers.openai.com/api/docs/models/gpt-image-1.5)의 규격을 확인했다. 이미지 호출은 1024x1024·low·썸네일 3장으로 준비한다. 모델의 실제 계정 접근 권한과 유료 결과는 별도 검증한다.
+
+기존 .env에 개발 계정의 OPENAI_API_KEY와 AI_TEXT_MODEL·AI_IMAGE_MODEL·AI_MODE=live를 설정하고 API를 재시작한다. 키를 채팅·설정 화면·문서에 입력하지 않는다. 설정 화면에서 일·월 비용 한도, 텍스트 1회와 썸네일 3장 1회의 예약 상한, 모델 가격 확인 URL·확인일을 저장한다. 한도를 설정하지 않은 상태에서 유료 호출은 차단된다.
+
+전체 생성은 선택한 채널마다 텍스트 1회와 공통 썸네일 3장 1회를 호출한다. 전체 예약액이 남은 일·월 한도를 넘으면 첫 호출 전 거부한다. 모델을 바꾸면 가격 근거도 다시 확인해 저장한다. OpenAI 입력에는 원본 JSON·HTML 대신 정규화된 상품 사실과 설명 텍스트를 전달한다.
+
+예약 상한은 제공자의 확정 청구액이 아니다. 실제 비용이 응답에서 확인되지 않으면 ai_calls에 unknown으로 남기고 예약액을 한도에서 계속 차감한다. 최종 청구는 제공자 사용량에서 확인한다. 불명확 실패를 자동 재시도하지 않는다. 실제 유료 검증 전 API 키와 검증 1건의 허용 비용을 확인한다.
+
+## 현재 실행 가능한 검사
+
+```bash
+make check-design
+make lint
+make test
+cd frontend
+npm run build
+```
+
+자동 테스트는 외부 호출을 차단하고 실제 수집 응답 fixture와 fake 어댑터를 사용한다. 수집·금액·이미지 저장·연습 생성·편집·확정·버전 충돌·예산·재시작 복구를 검증한다. 초안 PR에는 별도로 남은 화면·실제 AI·운영 DB 검증 항목을 표시한다.
+
+## 비밀과 문제 기록
+
+실제 키·비밀번호·DB 접속 정보는 `.env`에만 두며 커밋하지 않는다. `.env`, 로컬 DB, 이미지 파일, 로컬 로그는 Git 제외 대상이다. 실제 수집 응답을 fixture로 보관할 때는 인증정보를 제거한다. 도매꾹 fixture는 작성한 예시와 실제 조회에서 발췌한 응답을 구분해 표시했다.
+
+발생 문제는 `logs/development-issues.log`와 [개발 문제 문서](docs/development-issues.md)에 같은 ID로 기록한다. 로그는 로컬에만 보관한다. [설계](docs/PLAN.md), [요구사항](docs/requirements.md), [DB 설계](docs/db-schema.md), [인수인계](docs/handover.md)를 함께 참고한다.

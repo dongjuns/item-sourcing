@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> 적용 중단: 사용자가 이 문서의 이전 지침을 철회했다. 아래 내용은 과거 설계 참고용이며 현재 작업에는 적용하지 않는다. 최신 범위는 PLAN.md와 TASKS.md에 기록한다.
+
 이 문서는 이 저장소에서 작업하는 AI 코딩 에이전트(Claude Code 등)와 개발자를 위한 규칙입니다.
 작업 전 `PLAN.md`(설계)와 `TASKS.md`(할 일)를 먼저 읽으세요.
 
@@ -21,7 +23,7 @@ backend/
     api/            # FastAPI 라우터 (얇게: 검증 + 서비스 호출만)
     services/       # 유스케이스: collect, generate, register, discover
     adapters/
-      sources/      # 도매몰별 1파일: ownerclan.py, domeggook.py, manual.py, base.py
+      sources/      # 도매몰별 1파일: ownerclan.py, domeggook.py, base.py (수동 입력은 스키마만)
       channels/     # 채널별 1파일: coupang.py, smartstore.py, base.py
       ai/           # text.py, image.py, base.py  ← 모델 교체는 여기서만
       market/       # naver_shopping.py, kamis.py
@@ -56,11 +58,12 @@ make seed        # 기본 settings(수수료율·배송비·톤) 투입
 
 - 백엔드 단독: `cd backend && uvicorn app.main:app --reload`
 - 프론트 단독: `cd frontend && npm run dev`
+- 설계·언어 검사: `make check-design` (현재 사용 가능. 앱 실행·lint·test 명령은 골격 구현 후 사용)
 - 환경변수: `.env.example`을 복사해 `.env` 생성. 실제 키는 절대 커밋하지 않음.
 
 ## 아키텍처 규칙 (반드시 지킬 것)
 
-1. **어댑터 패턴**: 도매몰·채널·AI·외부 데이터는 `adapters/*/base.py`의 Protocol을 구현한 파일 하나로 추가한다. 서비스 계층은 Protocol만 알고 구체 클래스를 import하지 않는다. 등록은 `adapters/registry.py`에서만. **특히 소싱처 어댑터는 비개발자 가족이 복사해서 새 도매몰을 붙일 수 있을 만큼 단순·균일하게** 유지한다 (파일 1개, 함수 3개, fixture 1폴더).
+1. **어댑터 패턴**: 도매몰·채널·AI·외부 데이터는 `adapters/*/base.py`의 Protocol을 구현한 파일 하나로 추가한다. 서비스 계층은 Protocol만 알고 구체 클래스를 import하지 않는다. 등록은 `adapters/registry.py`에서만. **특히 소싱처 어댑터는 비개발자 가족이 복사해서 새 도매몰을 붙일 수 있을 만큼 단순·균일하게** 유지한다 (파일 1개, 함수 3개, fixture 1폴더). P1 검색은 선택 SearchSourceAdapter Protocol로 분리해 기본 3함수를 유지한다.
 2. **표준 모델 경유**: 수집 결과는 반드시 `Product` 표준 모델로 정규화한 뒤 다음 단계로 넘긴다. 원본은 `raw` jsonb에 그대로 보존.
 3. **외부 호출 실패 격리**: 모든 외부 호출은 예외를 잡아 `RegisterResult`/`FetchResult` 같은 결과 객체로 반환한다. 예외를 라우터까지 올리지 않는다. 한 채널 실패가 다른 채널을 막으면 안 된다.
 4. **사람 확인 필수**: AI 생성물은 `listings.status = confirmed`가 된 뒤에만 등록 가능. 생성 즉시 등록하는 코드 경로를 만들지 않는다.
@@ -75,7 +78,8 @@ make seed        # 기본 settings(수수료율·배송비·톤) 투입
 
 - Python: ruff(기본 + isort), mypy strict-ish, 함수·변수 snake_case, 타입 힌트 필수, Pydantic v2 스키마.
 - TypeScript: eslint + prettier, 컴포넌트 PascalCase, 훅 `use*`, API 타입은 백엔드 OpenAPI에서 생성(`npm run gen:api`).
-- **주석·문서·커밋 메시지·UI 문구는 한국어**. 식별자는 영어.
+- **주석·문서·커밋 메시지·UI 문구는 한국어**. 식별자는 영어. 코드와 Markdown에는 영어·한글만 사용한다. 일반 숫자·공백·문장부호·수식 기호는 허용한다.
+- 문서·코드 수정 후 `make check-design`으로 언어 harness를 통과한다. 구현 골격에서는 이 검사를 `make lint`와 CI에 포함한다. 검사 범위·실행 방법은 `harness/README.md`를 따른다.
 - 한 함수 40줄 이내, 한 파일 400줄 이내를 목표. 넘으면 분리.
 - 매직 넘버 금지: 채널 규격 수치(이미지 크기, 글자 수 제한)는 각 어댑터 상단 상수로.
 

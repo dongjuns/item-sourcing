@@ -1,0 +1,16 @@
+{
+  "output": [
+    {
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"title\": \"검토할 제목\", \"sections\": [{\"heading\": \"설명\", \"body\": \"실제 본문 설명\"}]}"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 100,
+    "output_tokens": 50
+  }
+}
