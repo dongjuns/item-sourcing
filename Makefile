@@ -1,5 +1,5 @@
 # 로컬 검증은 외부 API를 호출하지 않는다.
-.PHONY: check-language check-secrets test-harness check-design lint test migrate seed api web gen-api
+.PHONY: check-language check-secrets test-harness check-design lint test migrate seed api web gen-api local-start local-status
 UV_CACHE_DIR ?= /private/tmp/itemsourcing-uv-cache
 export UV_CACHE_DIR
 
@@ -39,3 +39,9 @@ web:
 
 gen-api:
 	cd frontend && npm run gen:api
+
+local-start:
+	backend/.venv/bin/python backend/scripts/local_dev.py start
+
+local-status:
+	backend/.venv/bin/python backend/scripts/local_dev.py status
