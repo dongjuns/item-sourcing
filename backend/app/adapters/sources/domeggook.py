@@ -102,11 +102,49 @@ def collect_options(value: JsonValue | None, issues: list[Issue]) -> list[Produc
     ]
 
 
+# [CHANNEL-SPEC] deli.pay는 배송비 부담주체, merge.basePrice는 묶음배송 조건이다.
+def collect_shipping(delivery: dict[str, JsonValue]) -> Shipping:
+    dome = object_value(delivery.get("dome"))
+    merge = object_value(delivery.get("merge"))
+    extra = object_value(delivery.get("feeExtra"))
+    payment = text_value(delivery.get("pay"))
+    free = payment == "무료배송"
+    return Shipping(
+        method=text_value(delivery.get("method")),
+        fee=0 if free else money_value(dome.get("fee")),
+        fee_type=text_value(dome.get("type")),
+        fee_table=text_value(dome.get("tbl")),
+        payment_method=payment,
+        fee_calculation=(
+            "fixed"
+            if free or dome.get("type") == "고정배송비"
+            else "quantity_tiers"
+            if dome.get("type") == "수량별차등"
+            else "unknown"
+        ),
+        quantity_fee_tiers=quantity_tiers(dome.get("tbl")),
+        dispatch_days=integer_value(delivery.get("periodDeli")),
+        bundle_shipping=(
+            "allowed"
+            if merge.get("enable") == "y"
+            else "not_allowed"
+            if merge.get("enable") == "n"
+            else "conditional"
+            if merge.get("enable") == "c"
+            else "unknown"
+        ),
+        bundle_threshold=money_value(merge.get("basePrice"))
+        if merge.get("enable") == "c"
+        else None,
+        jeju_fee=money_value(extra.get("jeju")),
+        remote_area_fee=money_value(extra.get("islands")),
+    )
+
+
 def build_product(raw: RawProduct) -> ProductData:
     item = object_value(raw.payload.get("domeggook")) or raw.payload
     basis, price, quantity = (object_value(item.get(key)) for key in ("basis", "price", "qty"))
     delivery = object_value(item.get("deli"))
-    dome_delivery = object_value(delivery.get("dome"))
     description = object_value(item.get("desc"))
     allowed = object_value(description.get("license")).get("usable")
     detail_html = text_value(object_value(description.get("contents")).get("item"))
@@ -131,22 +169,7 @@ def build_product(raw: RawProduct) -> ProductData:
         detail_html=detail_html,
         detail_text=description_text(detail_html),
         image_usage_allowed=boolean_value(allowed),
-        shipping=Shipping(
-            fee=money_value(dome_delivery.get("fee")),
-            fee_type=text_value(dome_delivery.get("type")),
-            fee_table=text_value(dome_delivery.get("tbl")),
-            payment_method=text_value(delivery.get("pay")),
-            fee_calculation=(
-                "fixed"
-                if dome_delivery.get("type") == "고정배송비"
-                else "quantity_tiers"
-                if dome_delivery.get("type") == "수량별차등"
-                else "unknown"
-            ),
-            quantity_fee_tiers=quantity_tiers(dome_delivery.get("tbl")),
-            dispatch_days=integer_value(delivery.get("periodDeli")),
-            remote_area_fee=money_value(object_value(delivery.get("feeExtra")).get("islands")),
-        ),
+        shipping=collect_shipping(delivery),
     )
     for field in ("name", "images", "detail_html"):
         if getattr(product, field) in (None, "", []):

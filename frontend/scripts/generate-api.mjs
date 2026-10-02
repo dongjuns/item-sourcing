@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import openapiTS, { astToString } from "openapi-typescript";
+import { format } from "prettier";
 
 const backend = fileURLToPath(new URL("../../backend/", import.meta.url));
 const python = fileURLToPath(
@@ -19,6 +20,6 @@ const schema = JSON.parse(result.stdout);
 const ast = await openapiTS(schema);
 await writeFile(
   new URL("../src/api/schema.d.ts", import.meta.url),
-  astToString(ast),
+  await format(astToString(ast), { parser: "typescript" }),
 );
 console.log("백엔드 OpenAPI에서 API 타입을 생성했습니다.");

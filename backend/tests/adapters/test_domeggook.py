@@ -9,10 +9,11 @@ import pytest
 from pydantic import SecretStr
 
 from app.adapters.http import SourceHTTP
-from app.adapters.sources.domeggook import DomeggookAdapter, item_number
+from app.adapters.sources.domeggook import DomeggookAdapter, collect_shipping, item_number
 from app.adapters.sources.parsing import boolean_value, description_text, quantity_tiers
 from app.core.config import Config
 from app.schemas.product import RawProduct
+from app.services.quote import product_quote
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "domeggook"
 
@@ -38,6 +39,53 @@ def test_recorded_normalize_snapshot() -> None:
     assert result.product.image_usage_allowed is True
     assert len(result.product.detail_text or "") == 569
     assert len(result.product.images or []) == 3
+
+
+def test_free_shipping_dispatch_and_no_bundle() -> None:
+    payload = json.loads((FIXTURES / "product_recorded.json").read_text())
+    # 작성한 반례다. 실제 녹화본을 무료배송 상품으로 바꾸지 않는다.
+    payload["domeggook"]["deli"].update(pay="무료배송", periodDeli="3", merge={"enable": "n"})
+    raw = RawProduct(
+        source="domeggook",
+        source_url="https://www.domeggook.com/63749955",
+        fetched_at=datetime(2026, 9, 30, tzinfo=UTC),
+        payload=payload,
+    )
+    result = adapter().normalize(raw)
+    assert result.product is not None and result.product.shipping is not None
+    shipping = result.product.shipping
+    assert shipping.method == "택배" and shipping.dispatch_days == 3
+    assert shipping.bundle_shipping == "not_allowed" and shipping.bundle_threshold is None
+    assert shipping.fee == 0
+    assert product_quote(result.product, 2).total_amount == 70000
+    assert raw.payload == payload
+    assert payload["domeggook"]["deli"]["dome"]["fee"] == "2750"
+
+
+@pytest.mark.parametrize(
+    ("enable", "expected"),
+    [
+        ("y", "allowed"),
+        ("n", "not_allowed"),
+        ("c", "conditional"),
+        ("unknown", "unknown"),
+        (None, "unknown"),
+    ],
+)
+def test_bundle_conditions_are_separate_from_free_shipping(
+    enable: str | None, expected: str
+) -> None:
+    shipping = collect_shipping({"merge": {"enable": enable, "basePrice": "300000"}})
+    assert shipping.bundle_shipping == expected
+    assert shipping.bundle_threshold == (300000 if enable == "c" else None)
+    assert shipping.free_shipping_threshold is None
+    assert shipping.fee is None and shipping.dispatch_days is None
+
+
+def test_missing_shipping_does_not_mean_free_or_no_bundle() -> None:
+    shipping = collect_shipping({})
+    assert shipping.fee is None and shipping.method is None
+    assert shipping.bundle_shipping == "unknown"
 
 
 @pytest.mark.parametrize(

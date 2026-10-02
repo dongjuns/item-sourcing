@@ -4,6 +4,7 @@ import { request, type Asset, type Product } from "../api/client";
 import { money, statusLabel } from "../api/display";
 import { AssetImage } from "../components/AssetImage";
 import { ProductAmounts } from "../components/ProductAmounts";
+import { ShippingInfo } from "../components/ShippingInfo";
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -101,10 +102,7 @@ export function ProductDetail() {
           </p>
         ))}
         {!product.options && <p>옵션 정보 확인 필요</p>}
-        <p>
-          배송비 {money(product.shipping?.fee)} ·{" "}
-          {product.shipping?.fee_type || "배송 방식 미확인"}
-        </p>
+        <ShippingInfo shipping={product.shipping} />
       </div>
       {!!product.issues?.length && (
         <div className="panel notice">

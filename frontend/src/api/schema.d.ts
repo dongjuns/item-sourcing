@@ -699,6 +699,8 @@ export interface components {
     };
     /** Shipping */
     Shipping: {
+      /** Method */
+      method?: string | null;
       /** Fee */
       fee?: string | null;
       /** Fee Type */
@@ -719,8 +721,18 @@ export interface components {
       free_shipping_threshold?: string | null;
       /** Remote Area Fee */
       remote_area_fee?: string | null;
+      /** Jeju Fee */
+      jeju_fee?: string | null;
       /** Dispatch Days */
       dispatch_days?: number | null;
+      /**
+       * Bundle Shipping
+       * @default unknown
+       * @enum {string}
+       */
+      bundle_shipping: "allowed" | "not_allowed" | "conditional" | "unknown";
+      /** Bundle Threshold */
+      bundle_threshold?: string | null;
       /** Origin */
       origin?: string | null;
     };

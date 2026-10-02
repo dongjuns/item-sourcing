@@ -37,6 +37,7 @@ class PriceTier(BaseModel):
 
 
 class Shipping(BaseModel):
+    method: str | None = None
     fee: Decimal | None = Field(default=None, ge=0)
     fee_type: str | None = None
     fee_table: str | None = None
@@ -45,7 +46,10 @@ class Shipping(BaseModel):
     quantity_fee_tiers: list[PriceTier] = Field(default_factory=list)
     free_shipping_threshold: Decimal | None = None
     remote_area_fee: Decimal | None = None
+    jeju_fee: Decimal | None = None
     dispatch_days: int | None = None
+    bundle_shipping: Literal["allowed", "not_allowed", "conditional", "unknown"] = "unknown"
+    bundle_threshold: Decimal | None = Field(default=None, ge=0)
     origin: str | None = None
 
 
